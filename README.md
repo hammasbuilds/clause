@@ -69,9 +69,17 @@ So the UI shows the agreement for every finding and can filter to the ones two p
 Strongest clause types: Governing Law F1 0.930, Anti-Assignment 0.878, Expiration Date 0.872. Weakest:
 ROFR/ROFO/ROFN 0.143, Joint IP Ownership 0.182 — reported rather than averaged away.
 
-A threshold sweep over the retrieval vote (8 → 30) moved F1 from 0.536 to 0.537 and span precision from
-0.306 to 0.320: **the threshold is not the lever, agreement is.** That negative result is why the knob
-is left at its measured default instead of being tuned for a nicer headline.
+A threshold sweep over the retrieval vote, re-run on the current pipeline, moves document F1 from
+0.551 (vote ≥ 8) to 0.550 (vote ≥ 30) and span precision from 0.270 to 0.276, while predictions fall
+only from 1,205 to 1,176: **the threshold is not the lever, agreement is.** That negative result is why
+the knob sits at its measured default instead of being tuned for a nicer headline.
+
+| vote ≥ | precision | recall | F1 | span precision | predictions |
+|---|---|---|---|---|---|
+| 8 | 0.458 | 0.691 | 0.551 | 0.270 | 1,205 |
+| 16 | 0.459 | 0.691 | 0.552 | 0.271 | 1,201 |
+| 20 | 0.459 | 0.691 | 0.552 | 0.275 | 1,183 |
+| 30 | 0.459 | 0.688 | 0.550 | 0.276 | 1,176 |
 
 ## Input → Output
 
