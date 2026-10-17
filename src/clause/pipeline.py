@@ -234,6 +234,56 @@ def rerank_slot(candidates: list[tuple[int, float]]) -> list[tuple[int, float]]:
     return candidates
 
 
+# Words that make a label's own name recognisable in the text. A retrieval-only
+# finding must show at least one of them in the clause; without this the pass
+# reported an Insurance clause in a contract that never mentions insurance, which
+# is exactly the 0.236 precision the benchmark measures for retrieval alone.
+LABEL_CUES = {
+    "Insurance": ("insur",),
+    "Audit Rights": ("audit", "inspect"),
+    "Governing Law": ("govern", "laws of", "law of"),
+    "Cap On Liability": ("liabilit", "damages"),
+    "Uncapped Liability": ("liabilit",),
+    "Indemnification": ("indemnif", "hold harmless"),
+    "Confidentiality": ("confidential", "non-disclosure", "nondisclosure"),
+    "Non-Compete": ("compet",),
+    "Exclusivity": ("exclusiv",),
+    "Anti-Assignment": ("assign",),
+    "Change Of Control": ("change of control", "change in control"),
+    "Most Favored Nation": ("most favo",),
+    "Minimum Commitment": ("minimum",),
+    "Warranty Duration": ("warrant",),
+    "Force Majeure": ("force majeure", "act of god", "acts of god"),
+    "Dispute Resolution": ("arbitrat", "mediat", "jurisdiction", "venue", "dispute"),
+    "Renewal Term": ("renew",),
+    "Termination For Convenience": ("terminat",),
+    "Post-Termination Services": ("terminat",),
+    "Price Restrictions": ("price", "pricing"),
+    "Revenue/Profit Sharing": ("revenue", "profit", "royalt"),
+    "Ip Ownership Assignment": ("intellectual property", "inventions", "work product", "title and interest"),
+    "License Grant": ("licen",),
+    "Insurance Proceeds": ("insur",),
+    "No-Solicit Of Employees": ("solicit",),
+    "No-Solicit Of Customers": ("solicit",),
+    "Notice Period To Terminate Renewal": ("notice", "renew"),
+    "Expiration Date": ("expir", "terminates on"),
+    "Agreement Date": ("dated", "entered into"),
+}
+
+
+def label_is_plausible(label: str, text: str) -> bool:
+    """True when the clause carries a word that the label is named for.
+
+    Labels with no cue listed are let through: the point is to stop confident
+    nonsense, not to silently drop every label this table does not know about.
+    """
+    cues = LABEL_CUES.get(label)
+    if not cues:
+        return True
+    low = text.lower()
+    return any(cue in low for cue in cues)
+
+
 def _heading_matches(head: str, key: str) -> bool:
     """A heading matches a label when they share a distinctive word.
 
@@ -335,7 +385,11 @@ def label_clause(
                     found[label].neighbours = [best[label]]
 
             top_label, top_score = votes.most_common(1)[0]
-            if top_score >= threshold and top_label not in found:
+            if (
+                top_score >= threshold
+                and top_label not in found
+                and label_is_plausible(top_label, clause.text)
+            ):
                 found[top_label] = Finding(
                     label=top_label,
                     clause_index=clause.index,
@@ -378,7 +432,13 @@ def label_clause(
 # Obligations
 # --------------------------------------------------------------------------------------
 
-DEADLINE_RE = re.compile(r"\bwithin\s+(\w+(?:\s+\(\d+\))?)\s+(business\s+days|days|months|years|hours)\b", re.IGNORECASE)
+DEADLINE_RE = re.compile(
+    # "forty-five (45) days" is written with a hyphen, and the first version's
+    # \w+ stopped at it, so every hyphenated deadline came back empty.
+    r"\bwithin\s+([\w-]+(?:\s+\(\d+\))?)\s+"
+    r"(business\s+days|calendar\s+days|days|months|years|hours|weeks)\b",
+    re.IGNORECASE,
+)
 TRIGGER_RE = re.compile(r"\b(?:upon|in\s+the\s+event\s+(?:of|that)|if|following|after|prior\s+to)\b[^.;]{5,120}", re.IGNORECASE)
 REMEDY_RE = re.compile(r"\b(?:shall\s+be\s+entitled\s+to|may\s+terminate|liquidated\s+damages|specific\s+performance|injunctive\s+relief|reimburse)\b[^.;]{0,100}", re.IGNORECASE)
 DUTY_RE = re.compile(r"\b(shall|must|agrees\s+to|is\s+obligated\s+to|will)\b\s+([^.;]{8,160})", re.IGNORECASE)

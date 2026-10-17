@@ -176,3 +176,56 @@ def test_markdown_report_mentions_the_findings(tmp_path):
     md = markdown(out, name="Test", min_agreement=1)
     assert "Clause review" in md and "Obligations" in md
     assert "Governing Law" in md
+
+
+# --- found by feeding the pipeline a contract written by hand ---------------
+
+
+def test_hyphenated_deadline_is_read():
+    r"""A hyphenated number: "within forty-five (45) days". \w+ stopped at the hyphen and the deadline
+    came back empty, so the one column a reader checks first was blank."""
+    clause = segment(
+        "2. FEES\n\n2.1 The Company shall pay the Supplier the fees within forty-five (45) days "
+        "of receipt of a valid invoice.\n"
+    )
+    duties = [o for c in clause for o in obligations(c)]
+    assert duties
+    assert any("forty-five" in o.deadline for o in duties), [o.deadline for o in duties]
+
+
+@pytest.mark.parametrize(
+    "deadline,text",
+    [
+        ("thirty (30) days", "The Supplier shall deliver within thirty (30) days of the order."),
+        ("ten business days", "The Company shall respond within ten business days of notice."),
+        ("twenty-one (21) days", "Either Party shall cure within twenty-one (21) days of notice."),
+    ],
+)
+def test_deadline_shapes(deadline, text):
+    duties = [o for c in segment("1. T\n\n1.1 " + text) for o in obligations(c)]
+    assert any(deadline in o.deadline for o in duties), [o.deadline for o in duties]
+
+
+def test_a_label_needs_a_word_it_is_named_for():
+    """Retrieval alone reported an Insurance clause in a contract with no insurance."""
+    from clause.pipeline import label_is_plausible
+
+    assert label_is_plausible("Insurance", "The Supplier shall maintain insurance of $1m.")
+    assert not label_is_plausible("Insurance", "The Supplier shall deliver the goods on Tuesday.")
+    assert label_is_plausible("Governing Law", "governed by the laws of Delaware")
+    assert not label_is_plausible("Audit Rights", "The parties agree to meet quarterly.")
+
+
+def test_unknown_labels_are_not_silently_dropped():
+    """The cue table is a filter on confident nonsense, not an allow-list."""
+    from clause.pipeline import label_is_plausible
+
+    assert label_is_plausible("Some Label With No Cue Listed", "any text at all")
+
+
+def test_junk_is_not_reviewed_as_a_contract(tmp_path):
+    from clause.corpus import Cuad
+
+    junk = "milk eggs bread coffee " * 40
+    out = review(junk, Cuad(tmp_path / "missing.json"))
+    assert len(out["findings"]) <= 3, [f["label"] for f in out["findings"]]

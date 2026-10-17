@@ -50,10 +50,17 @@ contract, so it cannot look up the answer.
 
 | | |
 |---|---|
-| Found a clause type the contract really has (document recall) | **0.684** |
-| A reported clause type was really there (document precision) | **0.463** |
-| Document F1 | **0.552** |
-| Pointed at text overlapping the expert span (span precision) | **0.284** |
+| Found a clause type the contract really has (document recall) | **0.628** |
+| A reported clause type was really there (document precision) | **0.529** |
+| Document F1 | **0.575** |
+| Pointed at text overlapping the expert span (span precision) | **0.440** |
+
+Those are the numbers after a **plausibility gate**: a finding from retrieval alone must show a word
+the label is named for (an Insurance finding needs "insur" somewhere in the clause). Without it the
+pipeline reported an insurance clause in a contract that never mentions insurance. The gate trades
+recall for precision and wins on both the headline and the one that matters most:
+precision 0.458 → 0.529, span precision 0.270 → **0.440**, F1 0.551 → 0.575, with the number of
+predictions cut from 1,205 to 509.
 
 **The finding that shaped the product:** agreement between passes predicts correctness far better than
 any single pass.
