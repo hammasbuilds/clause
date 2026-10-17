@@ -23,7 +23,12 @@ ROWS_BASE = "https://datasets-server.huggingface.co/rows?dataset=theatticusproje
 
 def rows_url(offset: int, length: int) -> str:
     return f"{ROWS_BASE}&config=default&split=train&offset={offset}&length={length}"
-UA = "clause-research mhammas1100@gmail.com"
+import os
+
+# SEC and the datasets-server ask for a declared contact in the User-Agent.
+# It is read from the environment so a real address is not published in the
+# source: set CONTACT_EMAIL before running a fetch.
+UA = f"clause-research {os.environ.get('CONTACT_EMAIL', 'set CONTACT_EMAIL')}"
 
 
 def get(url: str, *, retries: int = 4) -> bytes:
@@ -32,7 +37,7 @@ def get(url: str, *, retries: int = 4) -> bytes:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=120) as r:
                 return r.read()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if attempt == retries - 1:
                 raise
             print(f"  retry {attempt + 1}: {exc}")

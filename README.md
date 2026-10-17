@@ -8,6 +8,7 @@ exact text it came from.
 Product 2 of three in [`THREE-PRODUCTS-PLAN.md`](../THREE-PRODUCTS-PLAN.md).
 
 ```
+CONTACT_EMAIL=you@example.com uv run python scripts/fetch_edgar.py --out <dir>   # SEC asks for a contact
 uv run python -m clause.app          # the review desk on http://127.0.0.1:8820
 uv run python -m clause.evaluate     # score the pipeline against expert annotations
 ```

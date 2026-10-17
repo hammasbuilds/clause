@@ -11,13 +11,17 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-UA = "clause-research mhammas1100@gmail.com"
+# SEC and the datasets-server ask for a declared contact in the User-Agent.
+# It is read from the environment so a real address is not published in the
+# source: set CONTACT_EMAIL before running a fetch.
+UA = f"clause-research {os.environ.get('CONTACT_EMAIL', 'set CONTACT_EMAIL')}"
 SEARCH = "https://efts.sec.gov/LATEST/search-index?q=%s&forms=8-K,10-K,10-Q,S-1&dateRange=custom&startdt=%s&enddt=%s"
 
 # One query per contract type, so the corpus is sampled for type balance rather
@@ -63,7 +67,7 @@ def get(url: str, *, retries: int = 3) -> bytes:
 
                     raw = gzip.decompress(raw)
                 return raw
-        except Exception as exc:  # noqa: BLE001 - any network error is a retry
+        except Exception as exc:
             if attempt == retries - 1:
                 raise
             print(f"    retry {attempt + 1}: {exc}")
