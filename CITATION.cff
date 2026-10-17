@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: "clause-120k and Clause"
+message: "If you use this dataset or software, please cite it."
+type: dataset
+authors:
+  - family-names: Hammas
+    given-names: Muhammad
+    alias: hammasbuilds
+repository-code: "https://github.com/hammasbuilds/clause"
+year: 2026
+keywords:
+  - contracts
+  - clause-classification
+  - sec-edgar
+  - cuad
+references:
+  - type: data
+    title: "SEC EDGAR material-contract exhibits (EX-10)"
+    notes: "Public US securities filings."
+  - type: data
+    title: "CUAD (Contract Understanding Atticus Dataset)"
+    notes: "Expert clause annotations, CC BY 4.0."

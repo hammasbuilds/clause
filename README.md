@@ -23,6 +23,39 @@ uv run python -m clause.evaluate     # score the pipeline against expert annotat
 CUAD's contracts came from EDGAR, which is public and effectively unbounded — the corpus was never the
 bottleneck, the annotation was. So this fetches contracts at scale and labels them without a model.
 
+## Sources
+
+| Source | What it provides | Licence |
+|---|---|---|
+| **SEC EDGAR** material-contract exhibits (EX-10) | 2,266 commercial contracts, 13.96M words, 20 contract types, fetched one query per type so the corpus is balanced by type | public (US government filings) |
+| **CUAD** (The Atticus Project) | 510 contracts with 13,823 expert-annotated clause spans across 41 clause types | CC BY 4.0 |
+
+Both are public. The contracts are filed documents; the expert spans are CUAD's. Every row in
+`clause-120k` names its contract, its CIK and the EDGAR URL it came from.
+
+## What it is for
+
+- **Research:** contract-review work in this portfolio — clause typing, obligation extraction and
+  measuring where a labelling pipeline can and cannot be trusted.
+- **Product:** the **Clause** desk in this repository; `python -m clause.app`.
+- **Also usable for:** clause classification, obligation extraction (party, trigger, deadline, remedy),
+  contract-structure parsing, and retrieval over legal language.
+
+## Citing it
+
+If you use clause-120k, or anything derived from it, cite this repository:
+
+```bibtex
+@misc{clause120k,
+  author = {Muhammad Hammas},
+  title  = {clause-120k: clause-level annotations over SEC EDGAR material contracts},
+  year   = {2026},
+  url    = {https://github.com/hammasbuilds/clause}
+}
+```
+
+CUAD is CC BY 4.0, so attribution to The Atticus Project travels with anything built on the exemplars.
+
 ## How the review works
 
 **Structure first, retrieval second, no model anywhere.** The 2026 evidence on retrieval architectures

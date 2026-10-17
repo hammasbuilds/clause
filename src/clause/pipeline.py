@@ -45,6 +45,28 @@ NUM_RE = re.compile(
     r"\d+(?:\.\d+){0,3}[.)]?|\([a-z]\)|\([ivx]+\))\s+",
 )
 HEADING_RE = re.compile(r"^\s*([A-Z][A-Z \-/&,']{3,60})\s*[.:]?\s*$")
+
+# EDGAR filing furniture, not contract terms. The redaction legend that modern
+# exhibits carry - "CERTAIN PORTIONS ... HAVE BEEN EXCLUDED ... THE REGISTRANT
+# TREATS AS PRIVATE AND CONFIDENTIAL" - contains the word confidential, so it was
+# being labelled a Confidentiality clause in nearly every contract in the corpus.
+# Left in, it would have been the single most common label in the dataset.
+FILING_BOILERPLATE = re.compile(
+    r"certain\s+(?:confidential\s+)?(?:portions?|information)\s+(?:of\s+this\s+)?exhibit"
+    r"|ha(?:s|ve)\s+been\s+(?:omitted|excluded)\s+(?:from\s+this\s+exhibit\s+)?"
+    r"(?:because|pursuant)"
+    r"|treats?\s+as\s+private\s+and\s+confidential"
+    r"|omitted\s+pursuant\s+to\s+item\s+601"
+    r"|\[\*{2,}\]\s*(?:indicates|designates)"
+    r"|^\s*exhibit\s+\d+(?:\.\d+)*\s*$"
+    r"|^\s*page\s+\d+\s+of\s+\d+\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def is_filing_boilerplate(text: str) -> bool:
+    """True for EDGAR cover text that is part of the filing, not the agreement."""
+    return bool(FILING_BOILERPLATE.search(text))
 SENT_RE = re.compile(r"(?<=[.;])\s+(?=[A-Z(])")
 
 
@@ -116,6 +138,8 @@ def segment(contract: str, *, min_words: int = 6, max_words: int = 400) -> list[
                 parts.append(" ".join(acc))
         for part in parts:
             if len(part.split()) < min_words:
+                continue
+            if is_filing_boilerplate(part):
                 continue
             clauses.append(
                 Clause(
