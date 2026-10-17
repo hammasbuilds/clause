@@ -78,6 +78,16 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .clause-view{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 9px 9px 0;
   padding:11px 13px;margin-top:10px;background:var(--bg);font-size:13.5px;white-space:pre-wrap}
 .clause-view h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.doc{max-height:70vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--bg)}
+.doc .cl{padding:9px 10px;border-radius:8px;margin:7px 0;font-size:13.5px;line-height:1.6;
+  border-left:3px solid transparent;white-space:pre-wrap}
+.doc .cl.flagged{background:var(--accent-soft);border-left-color:var(--accent)}
+.doc .cl.target{box-shadow:0 0 0 2px var(--accent)}
+.doc .num{font:12px var(--mono,ui-monospace);color:var(--muted);margin-right:6px}
+.doc .chips{margin-top:6px}
+.doc .chip2{display:inline-block;font-size:11.5px;border-radius:999px;padding:2px 9px;margin:2px 4px 0 0;
+  background:var(--panel);border:1px solid var(--line)}
+.doc .chip2.a2{border-color:var(--accent);font-weight:600}
 tr.pick{cursor:pointer}
 tr.pick:hover{background:var(--accent-soft)}
 tr.pick.on{background:var(--accent-soft)}
@@ -100,6 +110,7 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
   </div>
   <nav id="tabs">
     <button data-tab="review" aria-selected="true">Review</button>
+    <button data-tab="document" aria-selected="false">Document</button>
     <button data-tab="obligations" aria-selected="false">Obligations</button>
     <button data-tab="structure" aria-selected="false">Structure</button>
     <button data-tab="report" aria-selected="false">Report</button>
@@ -163,6 +174,15 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
       </div>
     </section>
 
+    <section id="panel-document" class="card hidden">
+      <h2>The contract, with every finding marked</h2>
+      <div class="row">
+        <label style="margin:0"><input type="checkbox" id="doc-only-flagged"> show only the clauses with findings</label>
+        <span class="hint" id="doc-note"></span>
+      </div>
+      <div class="doc" id="doc"></div>
+    </section>
+
     <section id="panel-obligations" class="card hidden">
       <h2>Obligations — who owes what</h2>
       <table id="obl"><thead><tr><th>Party</th><th>Duty</th><th>By when</th><th>Trigger</th></tr></thead><tbody></tbody></table>
@@ -209,6 +229,9 @@ let last = null;
 // shows a readable number by default and the rest on request.
 let showAll = false;
 const PAGE_ROWS = 25;
+// Which clause the reader last asked about. Kept outside the render because
+// opening the Document tab rebuilds the list, which used to wipe the marker.
+let docTarget = null;
 
 async function post(url, body){
   const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
@@ -224,11 +247,12 @@ function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.clas
 
 function showTab(tab){
   document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===tab)));
-  ["review","obligations","structure","report","benchmark","corpus"].forEach(t=>
+  ["review","document","obligations","structure","report","benchmark","corpus"].forEach(t=>
     $("panel-"+t).classList.toggle("hidden", t!==tab));
   if(tab==="benchmark") loadBenchmark();
   if(tab==="corpus") loadCorpus();
   if(tab==="structure") renderStructure();
+  if(tab==="document") renderDocument();
   if(tab==="obligations") renderObligations();
 }
 
@@ -313,6 +337,10 @@ function renderFindings(){
       body.querySelectorAll("tr").forEach(x => x.classList.remove("on"));
       tr.classList.add("on");
       showClause(f);
+      // Keep the document view in step, so the two never disagree about which
+      // clause is being looked at.
+      docTarget = f.clause_index;
+      markDocTarget(true);
     };
     body.appendChild(tr);
   });
@@ -321,6 +349,50 @@ function renderFindings(){
   $("agree-note").textContent = (fellBack ? "No finding here has two passes agreeing, so all are shown. " : "")
     + rows.length + " of " + (last.findings||[]).length
     + " findings match the filter. On held-out expert annotations, findings two passes agree on were right 83% of the time; a single retrieval pass alone, 26%.";
+}
+
+function renderDocument(){
+  const host = $("doc"); host.innerHTML = "";
+  if(!last){ host.appendChild(el("span","hint","No review yet.")); return; }
+  const byClause = new Map();
+  (last.findings||[]).forEach(f => {
+    if(!byClause.has(f.clause_index)) byClause.set(f.clause_index, []);
+    byClause.get(f.clause_index).push(f);
+  });
+  const onlyFlagged = $("doc-only-flagged").checked;
+  let shown = 0;
+  (last.clauses||[]).forEach(c => {
+    const found = byClause.get(c.index) || [];
+    if(onlyFlagged && !found.length) return;
+    shown++;
+    const div = el("div", "cl" + (found.length ? " flagged" : ""));
+    div.id = "clause-" + c.index;
+    const head = el("span","num", (c.number || ("#" + c.index)) + (c.heading ? "  " + c.heading : ""));
+    div.appendChild(head);
+    div.appendChild(document.createTextNode(c.text));
+    if(found.length){
+      const chips = el("div","chips");
+      found.forEach(f => {
+        const chip = el("span","chip2" + (f.agreement >= 2 ? " a2" : ""),
+                        f.label + " · " + f.agreement + (f.agreement === 1 ? " pass" : " passes"));
+        chips.appendChild(chip);
+      });
+      div.appendChild(chips);
+    }
+    host.appendChild(div);
+  });
+  $("doc-note").textContent = shown + " of " + (last.clauses||[]).length + " clauses shown · "
+    + byClause.size + " carry a finding";
+  markDocTarget(false);
+}
+
+function markDocTarget(scroll){
+  document.querySelectorAll(".doc .cl.target").forEach(x => x.classList.remove("target"));
+  if(docTarget === null) return;
+  const el = document.getElementById("clause-" + docTarget);
+  if(!el) return;            // hidden by the "only flagged" filter
+  el.classList.add("target");
+  if(scroll) el.scrollIntoView({block: "center"});
 }
 
 function showClause(f){
@@ -377,7 +449,7 @@ $("run").onclick = async () => {
     const r = await post("/api/review", {text:$("text").value, contract_type:$("ctype").value, name:$("name").value});
     if(r.error){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",r.error)); return; }
     last = r; renderSummary(r); fillLabelFilter(); renderFindings();
-    renderObligations(); renderStructure();
+    renderObligations(); renderStructure(); renderDocument();
   } catch(e){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",e.message)); }
   finally{
     clearInterval(tick);
@@ -387,6 +459,7 @@ $("run").onclick = async () => {
 };
 $("only-agreed").onchange = renderFindings;
 $("label-filter").onchange = renderFindings;
+$("doc-only-flagged").onchange = renderDocument;
 $("finding-search").oninput = renderFindings;
 $("show-all").onclick = () => { showAll = !showAll; renderFindings(); };
 
@@ -406,10 +479,10 @@ $("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=n
   $("kpis").innerHTML=""; $("kpis").appendChild(el("span","hint","No review yet."));
   $("gaps").innerHTML=""; $("unusual").innerHTML="";
   $("findings").querySelector("tbody").innerHTML="";
-  $("clause-view").innerHTML=""; $("label-filter").innerHTML="";
+  $("clause-view").innerHTML=""; $("label-filter").innerHTML=""; docTarget = null;
   // Everything drawn from the review has to go, not only what is on screen now:
   // Clear used to leave the previous contract's duties on the Obligations tab.
-  renderObligations(); renderStructure(); };
+  renderObligations(); renderStructure(); renderDocument(); };
 
 // file input + drag and drop
 $("drop").onclick = () => $("file").click();
