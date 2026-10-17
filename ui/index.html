@@ -406,7 +406,10 @@ $("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=n
   $("kpis").innerHTML=""; $("kpis").appendChild(el("span","hint","No review yet."));
   $("gaps").innerHTML=""; $("unusual").innerHTML="";
   $("findings").querySelector("tbody").innerHTML="";
-  $("clause-view").innerHTML=""; $("label-filter").innerHTML=""; };
+  $("clause-view").innerHTML=""; $("label-filter").innerHTML="";
+  // Everything drawn from the review has to go, not only what is on screen now:
+  // Clear used to leave the previous contract's duties on the Obligations tab.
+  renderObligations(); renderStructure(); };
 
 // file input + drag and drop
 $("drop").onclick = () => $("file").click();

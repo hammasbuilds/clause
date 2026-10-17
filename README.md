@@ -18,7 +18,7 @@ uv run python -m clause.evaluate     # score the pipeline against expert annotat
 | Resource | Size | Note |
 |---|---|---|
 | CUAD | 510 contracts, 13,823 expert answer spans, 41 clause types | the expert benchmark, CC BY 4.0 — and as few as 3 examples of some contract types |
-| **clause-120k (ours)** | **1,163 contracts, 7.15M words, 20 contract types** | built from SEC EDGAR EX-10 exhibits, one query per contract type so the corpus is sampled for type balance |
+| **clause-120k (ours)** | **3,649 contracts, 25.0M words, 20 contract types** | built from SEC EDGAR EX-10 exhibits, one query per contract type so the corpus is sampled for type balance |
 
 CUAD's contracts came from EDGAR, which is public and effectively unbounded — the corpus was never the
 bottleneck, the annotation was. So this fetches contracts at scale and labels them without a model.
@@ -35,7 +35,7 @@ It is built on two public corpora, named here because CUAD's licence asks for at
 
 | Built on | What it provides | Licence |
 |---|---|---|
-| **SEC EDGAR** material-contract exhibits (EX-10) | 1,163 commercial contracts, 7.15M words, 20 contract types — we fetched one query per type so the corpus is balanced by type | public (US government filings) |
+| **SEC EDGAR** material-contract exhibits (EX-10) | 3,649 commercial contracts, 25.0M words, 20 contract types — we fetched one query per type so the corpus is balanced by type | public (US government filings) |
 | **CUAD** (The Atticus Project) | 510 contracts with 13,823 expert-annotated clause spans across 41 clause types | CC BY 4.0 |
 
 Every row names its contract, its CIK and the EDGAR URL it came from.
