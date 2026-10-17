@@ -23,6 +23,9 @@ uv run python -m clause.evaluate     # score the pipeline against expert annotat
 CUAD's contracts came from EDGAR, which is public and effectively unbounded — the corpus was never the
 bottleneck, the annotation was. So this fetches contracts at scale and labels them without a model.
 
+**The dataset goes to Kaggle, not here** - this repository is the code that builds, measures and
+reads it. (clause-120k is still building; the link lands here when it is done.)
+
 ## How it was built
 
 **We built clause-120k** — the contract collection, the segmentation, the three labelling passes, the
