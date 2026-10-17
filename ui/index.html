@@ -140,6 +140,7 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
         <button class="btn" id="clear">Clear</button>
       </div>
       <div class="row"><span class="hint" id="src"></span></div>
+      <p class="hint err hidden" id="run-error"></p>
       <div id="progress" class="hidden">
         <div class="bar"><i></i></div>
         <p class="hint" id="progress-note"></p>
@@ -225,6 +226,7 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
 <script>
 const $ = (id) => document.getElementById(id);
 let last = null;
+window.last = null;   // readable by a test driver; set wherever last is set
 // A 15,000-word contract produced 89 findings and a page 13,758px tall. The table
 // shows a readable number by default and the rest on request.
 let showAll = false;
@@ -447,10 +449,27 @@ $("run").onclick = async () => {
   }, 200);
   try{
     const r = await post("/api/review", {text:$("text").value, contract_type:$("ctype").value, name:$("name").value});
-    if(r.error){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",r.error)); return; }
-    last = r; renderSummary(r); fillLabelFilter(); renderFindings();
+    if(r.error){
+      // Next to the button that caused it: the summary panel is on the Review
+      // tab, so an error shown only there is invisible from Corpus or Benchmark.
+      $("run-error").textContent = r.error;
+      $("run-error").classList.remove("hidden");
+      $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",r.error));
+      return;
+    }
+    $("run-error").classList.add("hidden");
+    last = r; window.last = r; renderSummary(r); fillLabelFilter(); renderFindings();
     renderObligations(); renderStructure(); renderDocument();
-  } catch(e){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",e.message)); }
+    // The contract box is on screen whatever tab you are on, so Review can be
+    // pressed from Corpus or Benchmark - and the result used to land on a tab
+    // you were not looking at, which reads as nothing having happened.
+    const active = document.querySelector('#tabs button[aria-selected="true"]');
+    if(active && active.dataset.tab !== "review") showTab("review");
+  } catch(e){
+    $("run-error").textContent = e.message;
+    $("run-error").classList.remove("hidden");
+    $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",e.message));
+  }
   finally{
     clearInterval(tick);
     $("progress").classList.add("hidden");
@@ -475,7 +494,8 @@ $("load").onclick = async () => {
   } catch(e){ $("src").textContent = e.message; }
   finally{ $("load").disabled = false; }
 };
-$("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=null;
+$("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=null; window.last=null;
+  $("run-error").classList.add("hidden");
   $("kpis").innerHTML=""; $("kpis").appendChild(el("span","hint","No review yet."));
   $("gaps").innerHTML=""; $("unusual").innerHTML="";
   $("findings").querySelector("tbody").innerHTML="";
