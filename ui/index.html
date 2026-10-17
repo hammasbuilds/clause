@@ -134,6 +134,8 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
           <label style="margin:0"><input type="checkbox" id="only-agreed"> show only findings two or more passes agree on</label>
         </div>
         <p class="hint" id="agree-note"></p>
+        <div class="row"><button class="btn" id="show-all">Show all findings</button>
+          <span class="hint" id="shown-count"></span></div>
         <table id="findings"><thead><tr><th>Clause type</th><th>Clause</th><th>Agreement</th><th>Conf.</th></tr></thead><tbody></tbody></table>
       </div>
     </section>
@@ -180,6 +182,10 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
 <script>
 const $ = (id) => document.getElementById(id);
 let last = null;
+// A 15,000-word contract produced 89 findings and a page 13,758px tall. The table
+// shows a readable number by default and the rest on request.
+let showAll = false;
+const PAGE_ROWS = 25;
 
 async function post(url, body){
   const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
@@ -238,7 +244,12 @@ function renderFindings(){
   // fall back to everything and say so.
   let fellBack = false;
   if(onlyAgreed && rows.length === 0){ rows = last.findings||[]; fellBack = true; }
-  rows.slice(0,200).forEach(f=>{
+  const visible = showAll ? rows : rows.slice(0, PAGE_ROWS);
+  $("shown-count").textContent = rows.length > PAGE_ROWS
+    ? (showAll ? "showing all " + rows.length : "showing " + PAGE_ROWS + " of " + rows.length) : "";
+  $("show-all").classList.toggle("hidden", rows.length <= PAGE_ROWS);
+  $("show-all").textContent = showAll ? "Show fewer" : "Show all " + rows.length + " findings";
+  visible.forEach(f=>{
     const tr = el("tr");
     const td1 = el("td"); td1.appendChild(el("strong","",f.label));
     td1.appendChild(el("span","span", f.span.slice(0,220)));
@@ -252,9 +263,11 @@ function renderFindings(){
     const td4 = el("td","num", f.confidence.toFixed(2));
     tr.append(td1,td2,td3,td4); body.appendChild(tr);
   });
+  // "84 of 84 findings shown" next to 25 rendered rows was simply untrue; the
+  // filter count and the visible count are different numbers.
   $("agree-note").textContent = (fellBack ? "No finding here has two passes agreeing, so all are shown. " : "")
     + rows.length + " of " + (last.findings||[]).length
-    + " findings shown. On held-out expert annotations, findings two passes agree on were right 83% of the time; a single retrieval pass alone, 26%.";
+    + " findings match the filter. On held-out expert annotations, findings two passes agree on were right 83% of the time; a single retrieval pass alone, 26%.";
 }
 
 function renderObligations(){
@@ -295,6 +308,7 @@ $("run").onclick = async () => {
   finally{ $("run").disabled = false; }
 };
 $("only-agreed").onchange = renderFindings;
+$("show-all").onclick = () => { showAll = !showAll; renderFindings(); };
 
 $("load").onclick = async () => {
   $("load").disabled = true;
