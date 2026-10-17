@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%230f6f5c%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-family=%27sans-serif%27 font-size=%2719%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3EC%3C/text%3E%3C/svg%3E">
+<title>Clause — contract review</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#15181d; --muted:#5b6270; --line:#e3e6ea;
+  --accent:#0f6f5c; --accent-ink:#fff; --accent-soft:#e7f3f0;
+  --warn:#8a5a00; --warn-soft:#fdf3dc; --bad:#9b2226; --bad-soft:#fdeaea;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 10px 26px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14161a; --panel:#1c1f24; --ink:#eef1f4; --muted:#9aa3b0; --line:#2d323a;
+  --accent:#5fd3b6; --accent-ink:#10231e; --accent-soft:#1d2d2a;
+  --warn:#fcd34d; --warn-soft:#2f2a1a; --bad:#fca5a5; --bad-soft:#2e1d1e; --shadow:none;
+}}
+:root[data-theme="dark"]{
+  --bg:#14161a; --panel:#1c1f24; --ink:#eef1f4; --muted:#9aa3b0; --line:#2d323a;
+  --accent:#5fd3b6; --accent-ink:#10231e; --accent-soft:#1d2d2a;
+  --warn:#fcd34d; --warn-soft:#2f2a1a; --bad:#fca5a5; --bad-soft:#2e1d1e; --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{background:var(--panel);border-bottom:1px solid var(--line)}
+.top{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;padding:18px 0 12px}
+h1{margin:0;font-size:21px}
+.sub{color:var(--muted);font-size:13px}
+.chips{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--bg)}
+nav{display:flex;gap:2px;overflow-x:auto}
+nav button{border:0;background:none;color:var(--muted);font:inherit;padding:9px 14px;cursor:pointer;
+  border-bottom:2px solid transparent;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+nav button:hover{color:var(--ink)}
+main{padding:20px 0 64px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.cols{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+textarea{width:100%;min-height:220px;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:11px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+select,input[type=text]{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:9px 10px;font:inherit}
+label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+button.btn{font:inherit;font-weight:600;border-radius:9px;padding:9px 15px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+button.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+button.btn:disabled{opacity:.55;cursor:progress}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--muted);
+  font-size:13px;margin-top:10px;cursor:pointer}
+.drop.hot{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);background:var(--bg)}
+.tag.a3{background:var(--accent-soft);border-color:transparent;font-weight:600}
+.tag.a2{background:var(--accent-soft);border-color:transparent}
+.tag.a1{background:var(--bg)}
+.flag{border-left:3px solid var(--warn);background:var(--warn-soft);padding:9px 11px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13.5px}
+.gap{border-left:3px solid var(--bad);background:var(--bad-soft);padding:9px 11px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13.5px}
+.span{font:12.5px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);display:block;margin-top:4px}
+.hint{color:var(--muted);font-size:12.5px}
+.hidden{display:none}
+.err{color:var(--bad)}
+footer{background:var(--panel);border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;padding:14px 0}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="top">
+    <h1>Clause</h1>
+    <span class="sub">contract review for small firms — every finding anchored to its text</span>
+    <span class="chips">
+      <span class="chip" id="chip-corpus">corpus …</span>
+      <span class="chip">no model · CPU only</span>
+      <button class="btn" id="theme" title="light / dark">◐</button>
+    </span>
+  </div>
+  <nav id="tabs">
+    <button data-tab="review" aria-selected="true">Review</button>
+    <button data-tab="obligations" aria-selected="false">Obligations</button>
+    <button data-tab="structure" aria-selected="false">Structure</button>
+    <button data-tab="report" aria-selected="false">Report</button>
+    <button data-tab="benchmark" aria-selected="false">Benchmark</button>
+    <button data-tab="corpus" aria-selected="false">Corpus</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<div class="cols">
+  <!-- input column -->
+  <div>
+    <div class="card">
+      <h2>Contract</h2>
+      <label for="ctype">Contract type (sets what should be present)</label>
+      <select id="ctype"><option value="">(not specified)</option></select>
+      <label for="name">Name for the report</label>
+      <input type="text" id="name" placeholder="Acme MSA">
+      <label for="text">Paste the text</label>
+      <textarea id="text" spellcheck="false" placeholder="Paste a contract, drop a .txt file, or load one from the corpus."></textarea>
+      <div class="drop" id="drop">Drop a .txt / .md file here, or click to choose
+        <input type="file" id="file" accept=".txt,.md,.text" class="hidden"></div>
+      <div class="row">
+        <button class="btn primary" id="run">Review</button>
+        <button class="btn" id="load">Load a real contract</button>
+        <button class="btn" id="clear">Clear</button>
+      </div>
+      <div class="row"><span class="hint" id="src"></span></div>
+    </div>
+  </div>
+
+  <!-- output column -->
+  <div>
+    <section id="panel-review">
+      <div class="card">
+        <h2>Summary</h2>
+        <div class="kpis" id="kpis"><span class="hint">No review yet.</span></div>
+        <div id="gaps"></div>
+        <div id="unusual"></div>
+      </div>
+      <div class="card">
+        <h2>Findings</h2>
+        <div class="row">
+          <label style="margin:0"><input type="checkbox" id="only-agreed"> show only findings two or more passes agree on</label>
+        </div>
+        <p class="hint" id="agree-note"></p>
+        <table id="findings"><thead><tr><th>Clause type</th><th>Clause</th><th>Agreement</th><th>Conf.</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section id="panel-obligations" class="card hidden">
+      <h2>Obligations — who owes what</h2>
+      <table id="obl"><thead><tr><th>Party</th><th>Duty</th><th>By when</th><th>Trigger</th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section id="panel-structure" class="card hidden">
+      <h2>Structure</h2>
+      <div id="structure"><span class="hint">No review yet.</span></div>
+    </section>
+
+    <section id="panel-report" class="card hidden">
+      <h2>Report</h2>
+      <p class="hint">A client-ready review of the contract in the panel. PDF is generated here, with no
+        external service and no dependency.</p>
+      <label for="agree">Include findings with agreement of at least</label>
+      <select id="agree"><option value="1">1 pass (everything)</option><option value="2" selected>2 passes</option><option value="3">3 passes</option></select>
+      <div class="row">
+        <button class="btn primary" id="dl-pdf">Download PDF</button>
+        <button class="btn" id="dl-md">Markdown</button>
+        <button class="btn" id="dl-html">Printable HTML</button>
+      </div>
+      <p class="hint" id="dl-note"></p>
+    </section>
+
+    <section id="panel-benchmark" class="card hidden">
+      <h2>Measured against expert annotations</h2>
+      <div id="benchmark"><span class="hint">loading…</span></div>
+    </section>
+
+    <section id="panel-corpus" class="card hidden">
+      <h2>Corpus</h2>
+      <div id="corpus"><span class="hint">loading…</span></div>
+    </section>
+  </div>
+</div>
+</main>
+
+<footer><div class="wrap">Clause · expert annotations from CUAD (CC BY 4.0) · contracts from SEC EDGAR (public)</div></footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let last = null;
+
+async function post(url, body){
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+  if(!r.ok) throw new Error((await r.text()).slice(0,300));
+  return r.json();
+}
+async function get(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error((await r.text()).slice(0,300));
+  return r.json();
+}
+function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!==undefined) e.textContent=text; return e; }
+
+function showTab(tab){
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===tab)));
+  ["review","obligations","structure","report","benchmark","corpus"].forEach(t=>
+    $("panel-"+t).classList.toggle("hidden", t!==tab));
+  if(tab==="benchmark") loadBenchmark();
+  if(tab==="corpus") loadCorpus();
+  if(tab==="structure") renderStructure();
+  if(tab==="obligations") renderObligations();
+}
+
+function renderSummary(r){
+  const c = r.counts || {};
+  $("kpis").innerHTML = "";
+  [["clauses read", c.clauses],["findings", c.findings],["clause types", c.labels_found],
+   ["obligations", c.obligations],["3-pass", c.agreement_3],["2-pass", c.agreement_2]]
+   .forEach(([k,v])=>{ const d=el("div","kpi"); d.appendChild(el("b","",String(v??0)));
+                       d.appendChild(el("span","",k)); $("kpis").appendChild(d); });
+  $("gaps").innerHTML = "";
+  (r.missing_protections||[]).forEach(m=>{
+    const d = el("div","gap"); d.appendChild(el("strong","","Missing: "));
+    d.appendChild(document.createTextNode(m + " — expected in a " + (r.contract_type||"contract") + "."));
+    $("gaps").appendChild(d);
+  });
+  if(!(r.missing_protections||[]).length){
+    $("gaps").appendChild(el("p","hint","Nothing expected for this contract type is absent."));
+  }
+  $("unusual").innerHTML = "";
+  (r.unusual_terms||[]).slice(0,8).forEach(u=>{
+    const d = el("div","flag");
+    d.appendChild(el("strong","", u.label + " "));
+    d.appendChild(document.createTextNode("(clause " + (u.number||u.clause_index) + ")"));
+    d.appendChild(el("span","span", u.span.slice(0,260)));
+    $("unusual").appendChild(d);
+  });
+}
+
+function renderFindings(){
+  if(!last) return;
+  const onlyAgreed = $("only-agreed").checked;
+  const body = $("findings").querySelector("tbody"); body.innerHTML = "";
+  let rows = (last.findings||[]).filter(f => !onlyAgreed || f.agreement >= 2);
+  // Never show an empty table because of a filter: if nothing reaches two passes,
+  // fall back to everything and say so.
+  let fellBack = false;
+  if(onlyAgreed && rows.length === 0){ rows = last.findings||[]; fellBack = true; }
+  rows.slice(0,200).forEach(f=>{
+    const tr = el("tr");
+    const td1 = el("td"); td1.appendChild(el("strong","",f.label));
+    td1.appendChild(el("span","span", f.span.slice(0,220)));
+    if(f.rule_evidence){ td1.appendChild(el("span","span","matched: "+f.rule_evidence)); }
+    if(f.neighbours && f.neighbours.length){
+      td1.appendChild(el("span","span","nearest expert span: “"+f.neighbours[0].exemplar.slice(0,120)+"”"));
+    }
+    const td2 = el("td","num", f.number || ("#"+f.clause_index));
+    const td3 = el("td"); const tag = el("span","tag a"+f.agreement, f.passes.join(" + "));
+    td3.appendChild(tag);
+    const td4 = el("td","num", f.confidence.toFixed(2));
+    tr.append(td1,td2,td3,td4); body.appendChild(tr);
+  });
+  $("agree-note").textContent = (fellBack ? "No finding here has two passes agreeing, so all are shown. " : "")
+    + rows.length + " of " + (last.findings||[]).length
+    + " findings shown. On held-out expert annotations, findings two passes agree on were right 83% of the time; a single retrieval pass alone, 26%.";
+}
+
+function renderObligations(){
+  const body = $("obl").querySelector("tbody"); body.innerHTML = "";
+  if(!last){ return; }
+  (last.obligations||[]).slice(0,120).forEach(o=>{
+    const tr = el("tr");
+    tr.append(el("td","",o.who), el("td","",o.what), el("td","num",o.deadline||"—"), el("td","",o.trigger||"—"));
+    body.appendChild(tr);
+  });
+}
+
+function renderStructure(){
+  const host = $("structure"); host.innerHTML = "";
+  if(!last){ host.appendChild(el("span","hint","No review yet.")); return; }
+  const s = last.structure || {};
+  const t1 = el("table");
+  t1.innerHTML = "<thead><tr><th>Party</th><th>Mentions</th></tr></thead>";
+  const b1 = el("tbody");
+  (s.parties||[]).forEach(p=>{ const tr=el("tr"); tr.append(el("td","",p.name), el("td","num",String(p.mentions))); b1.appendChild(tr); });
+  t1.appendChild(b1); host.appendChild(el("h3","","Parties")); host.appendChild(t1);
+  const t2 = el("table");
+  t2.innerHTML = "<thead><tr><th>Defined term</th><th>Mentions</th></tr></thead>";
+  const b2 = el("tbody");
+  (s.defined_terms||[]).forEach(p=>{ const tr=el("tr"); tr.append(el("td","",p.term), el("td","num",String(p.mentions))); b2.appendChild(tr); });
+  t2.appendChild(b2); host.appendChild(el("h3","","Defined terms")); host.appendChild(t2);
+  host.appendChild(el("p","hint", (s.cross_references||[]).length + " cross-references between clauses, "
+    + (s.clauses||0) + " clauses."));
+}
+
+$("run").onclick = async () => {
+  $("run").disabled = true;
+  try{
+    const r = await post("/api/review", {text:$("text").value, contract_type:$("ctype").value, name:$("name").value});
+    if(r.error){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",r.error)); return; }
+    last = r; renderSummary(r); renderFindings(); renderObligations(); renderStructure();
+  } catch(e){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",e.message)); }
+  finally{ $("run").disabled = false; }
+};
+$("only-agreed").onchange = renderFindings;
+
+$("load").onclick = async () => {
+  $("load").disabled = true;
+  try{
+    const s = await get("/api/sample" + ($("ctype").value ? "?type="+encodeURIComponent($("ctype").value) : ""));
+    if(s.error){ $("src").textContent = s.error; return; }
+    $("text").value = s.text;
+    $("ctype").value = s.contract_type || "";
+    $("name").value = s.contract_type || "";
+    $("src").textContent = s.words.toLocaleString() + " words · " + s.doc_id;
+  } catch(e){ $("src").textContent = e.message; }
+  finally{ $("load").disabled = false; }
+};
+$("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=null;
+  $("kpis").innerHTML=""; $("kpis").appendChild(el("span","hint","No review yet."));
+  $("gaps").innerHTML=""; $("unusual").innerHTML="";
+  $("findings").querySelector("tbody").innerHTML=""; };
+
+// file input + drag and drop
+$("drop").onclick = () => $("file").click();
+$("file").onchange = (e) => { const f=e.target.files[0]; if(f) readFile(f); };
+["dragenter","dragover"].forEach(ev => $("drop").addEventListener(ev, e => {
+  e.preventDefault(); $("drop").classList.add("hot"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => {
+  e.preventDefault(); $("drop").classList.remove("hot"); }));
+$("drop").addEventListener("drop", e => { const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+function readFile(f){
+  const fr = new FileReader();
+  fr.onload = () => { $("text").value = fr.result; $("src").textContent = f.name + " · " + (fr.result.split(/\s+/).length).toLocaleString() + " words"; };
+  fr.readAsText(f);
+}
+
+async function download(kind){
+  if(!last){ $("dl-note").textContent = "Run a review first."; return; }
+  const btn = $("dl-"+kind); btn.disabled = true;
+  try{
+    const r = await fetch("/api/report."+kind, {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({name:$("name").value, min_agreement: Number($("agree").value)})});
+    if(!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (r.headers.get("Content-Disposition")||"").match(/filename="([^"]+)"/)?.[1] || ("clause-review."+kind);
+    document.body.appendChild(a); a.click(); a.remove();
+    $("dl-note").textContent = "Downloaded " + a.download + " (" + Math.round(blob.size/1024) + " KB).";
+  } catch(e){ $("dl-note").textContent = e.message; }
+  finally{ btn.disabled = false; }
+}
+$("dl-pdf").onclick = () => download("pdf");
+$("dl-md").onclick = () => download("md");
+$("dl-html").onclick = () => download("html");
+
+function tableFrom(rows, head){
+  const t = el("table");
+  if(head){ const tr=el("tr"); head.forEach(h=>tr.appendChild(el("th","",h)));
+            const th=el("thead"); th.appendChild(tr); t.appendChild(th); }
+  const tb = el("tbody");
+  rows.forEach(r=>{ const tr=el("tr"); r.forEach((c,i)=>tr.appendChild(el("td", i?"num":"", String(c)))); tb.appendChild(tr); });
+  t.appendChild(tb); return t;
+}
+
+async function loadBenchmark(){
+  const host = $("benchmark"); host.textContent = "loading…";
+  try{
+    const b = await get("/api/benchmark");
+    host.innerHTML = "";
+    if(b.note){ host.textContent = b.note; return; }
+    const c = b.cuad || {};
+    const m = c.document_level_micro || {};
+    host.appendChild(el("p","hint", "Held-out expert-annotated contracts: " + (c.contracts_evaluated||0)
+      + ". The retrieval pass only indexes the other half, so it cannot look up the answer."));
+    host.appendChild(tableFrom([
+      ["did the review find a clause type the contract has (recall)", (m.recall??0).toFixed(3)],
+      ["was a reported clause type really there (precision)", (m.precision??0).toFixed(3)],
+      ["F1", (m.f1??0).toFixed(3)],
+      ["pointed at the right text (span precision)", (c.span_level?.span_precision??0).toFixed(3)],
+    ], ["document level","value"]));
+    const bp = c.by_pass || {};
+    host.appendChild(el("h3","","Which pass to trust"));
+    host.appendChild(tableFrom(Object.entries(bp).map(([k,v])=>[k, v.predictions, (v.precision??0).toFixed(3)]),
+      ["passes that agreed","predictions","right text"]));
+    if(b.retrieval_sweep){
+      host.appendChild(el("h3","","Retrieval threshold sweep"));
+      host.appendChild(tableFrom(b.retrieval_sweep.map(r=>[r.vote_min,
+        (r.doc.precision??0).toFixed(3), (r.doc.recall??0).toFixed(3), (r.doc.f1??0).toFixed(3),
+        (r.span.span_precision??0).toFixed(3)]), ["vote min","precision","recall","F1","span precision"]));
+    }
+    const weakest = Object.entries(c.document_level_per_label||{})
+      .filter(([,v])=>v.f1!==null).sort((a,b)=>a[1].f1-b[1].f1).slice(0,8);
+    host.appendChild(el("h3","","Weakest clause types"));
+    host.appendChild(tableFrom(weakest.map(([k,v])=>[k, v.f1.toFixed(3), (v.precision??0).toFixed(2), (v.recall??0).toFixed(2)]),
+      ["clause type","F1","precision","recall"]));
+  } catch(e){ host.innerHTML=""; host.appendChild(el("span","err",e.message)); }
+}
+
+async function loadCorpus(){
+  const host = $("corpus"); host.textContent = "loading…";
+  try{
+    const s = await get("/api/stats");
+    host.innerHTML = "";
+    host.appendChild(el("h3","","Contracts fetched from EDGAR"));
+    host.appendChild(tableFrom([
+      ["contracts", (s.edgar.contracts||0).toLocaleString()],
+      ["contract types", s.edgar.contract_types||0],
+      ["median length (words)", (s.edgar.median_words||0).toLocaleString()],
+      ["total words", (s.edgar.total_words||0).toLocaleString()],
+    ], ["corpus","value"]));
+    host.appendChild(tableFrom(Object.entries(s.edgar.by_type||{}).map(([k,v])=>[k,v]), ["type","contracts"]));
+    host.appendChild(el("h3","","Expert annotations (CUAD)"));
+    host.appendChild(tableFrom([
+      ["clause types", s.cuad.labels],
+      ["exemplar spans (retrieval half)", (s.cuad.exemplar_spans||0).toLocaleString()],
+      ["held-out contracts (scoring half)", s.cuad.holdout_contracts],
+    ], ["annotations","value"]));
+  } catch(e){ host.innerHTML=""; host.appendChild(el("span","err",e.message)); }
+}
+
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+$("theme").onclick = () => {
+  const next = document.documentElement.getAttribute("data-theme")==="dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem("clause-theme", next); }catch(e){}
+};
+try{ const t=localStorage.getItem("clause-theme"); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}
+
+get("/api/stats").then(s => {
+  $("chip-corpus").textContent = (s.edgar.contracts||0).toLocaleString() + " contracts · "
+    + (s.cuad.exemplar_spans||0).toLocaleString() + " expert spans";
+  const sel = $("ctype");
+  (s.contract_types_known||[]).forEach(t => { const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); });
+}).catch(()=>{ $("chip-corpus").textContent = "corpus unavailable"; });
+</script>
+</body>
+</html>

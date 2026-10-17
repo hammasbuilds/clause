@@ -1,0 +1,124 @@
+# Clause
+
+Contract review for the firms that nobody sells contract AI to: solo practitioners, boutiques, and the
+small-business owner holding a 40-page agreement. Paste a contract, get the obligations, the unusual
+terms, the protections that are missing, and a client-ready report — with every finding anchored to the
+exact text it came from.
+
+Product 2 of three in [`THREE-PRODUCTS-PLAN.md`](../THREE-PRODUCTS-PLAN.md).
+
+```
+uv run python -m clause.app          # the review desk on http://127.0.0.1:8820
+uv run python -m clause.evaluate     # score the pipeline against expert annotations
+```
+
+## Why it exists
+
+| Resource | Size | Note |
+|---|---|---|
+| CUAD | 510 contracts, 13,823 expert answer spans, 41 clause types | the expert benchmark, CC BY 4.0 — and as few as 3 examples of some contract types |
+| **clause corpus (this repo)** | **2,266 contracts, 13.96M words, 20 contract types** | SEC EDGAR EX-10 exhibits, fetched one query per contract type so the corpus is sampled for type balance |
+
+CUAD's contracts came from EDGAR, which is public and effectively unbounded — the corpus was never the
+bottleneck, the annotation was. So this fetches contracts at scale and labels them without a model.
+
+## How the review works
+
+**Structure first, retrieval second, no model anywhere.** The 2026 evidence on retrieval architectures
+points this way: GraphRAG's advantage over plain dense retrieval concentrates in multi-hop questions,
+and for contracts the useful structure is explicit — numbering, defined terms, parties,
+cross-references. A vector index alone also pulls text from *irrelevant* contracts, because legal
+language is formulaic and the same wording recurs everywhere.
+
+1. **Segment** — the contract's own numbering and run-in headings become clauses.
+2. **Label** — three independent passes per clause, and the *agreement between them is kept*:
+   a rule pass (29 cue patterns keyed to CUAD's label names), a retrieval pass (BM25 k-NN over CUAD's
+   expert spans, from a disjoint half of CUAD), and a structure pass (the clause's own heading).
+3. **Obligations** — who owes what, on what trigger, by when, with what remedy. This is the part CUAD
+   does not carry, and the reason the product is more than a clause classifier.
+4. **Missing protections** — what a contract of this type should contain and does not.
+
+A cross-encoder reranker is the documented next step (one 2026 benchmark put hybrid+rerank at 0.816
+Recall@5 against 0.644 for BM25 alone). It needs a model, and the GPU is reserved, so the slot is
+explicit in `pipeline.rerank_slot` rather than implied.
+
+## Measured against expert annotations
+
+25 held-out CUAD contracts. The retrieval pass only indexes the *other* half of CUAD, split by
+contract, so it cannot look up the answer.
+
+| | |
+|---|---|
+| Found a clause type the contract really has (document recall) | **0.684** |
+| A reported clause type was really there (document precision) | **0.463** |
+| Document F1 | **0.552** |
+| Pointed at text overlapping the expert span (span precision) | **0.284** |
+
+**The finding that shaped the product:** agreement between passes predicts correctness far better than
+any single pass.
+
+| Passes that agreed | Predictions | Pointed at the right text |
+|---|---|---|
+| retrieval + structure | 8 | **1.000** |
+| retrieval + rule + structure | 2 | **1.000** |
+| retrieval + rule | 77 | **0.779** |
+| rule alone | 27 | 0.444 |
+| retrieval alone | 1,018 | 0.236 |
+
+So the UI shows the agreement for every finding and can filter to the ones two passes agree on.
+Strongest clause types: Governing Law F1 0.930, Anti-Assignment 0.878, Expiration Date 0.872. Weakest:
+ROFR/ROFO/ROFN 0.143, Joint IP Ownership 0.182 — reported rather than averaged away.
+
+A threshold sweep over the retrieval vote (8 → 30) moved F1 from 0.536 to 0.537 and span precision from
+0.306 to 0.320: **the threshold is not the lever, agreement is.** That negative result is why the knob
+is left at its measured default instead of being tuned for a nicer headline.
+
+## Input → Output
+
+```
+IN   an EX-10 employment agreement, 4,709 words
+OUT  61 clauses · 89 findings · 21 clause types · 80 obligations
+     missing protections: (none for this type)
+     unusual terms: Change Of Control (clause 11), Non-Compete (clause 8)
+     obligations: Employee — "be Beaverton, Oregon"; Employer — "pay the Executive a base salary ..."
+     report: clause-review-Browser-Test-MSA.pdf (7,050 bytes), .md, printable .html
+```
+
+## The report, and why it is a PDF
+
+Clause produces the one artefact of these three products that leaves the building: a review sent to a
+client or attached to a file. It needs fixed pagination and no reflow, so `report.py` writes a real PDF
+with no dependency — the content is Latin-script, so it uses the standard PDF fonts every reader has
+built in. Markdown and printable HTML come out of the same report model.
+
+## Problems hit while building this
+
+- **CUAD's label names were parsed with the whole question tail attached**, so the UI showed a clause
+  type called `Ip Ownership Assignment" that should be reviewed by a lawyer. Details: ...`. Every CUAD
+  question has the form `... related to "<Label>" that should be reviewed ...`; splitting on the phrase
+  instead of matching the quoted group fixed 41 labels at once.
+- **"Each Party shall …" is the most common subject in a commercial contract**, and the party list did
+  not contain the word *Party*, so nearly every obligation came back as `(unnamed party)`.
+- **Definitions were being reported as obligations** ("X shall have the meaning set forth in …"). The
+  filter that fixes it was written twice: the first version had its word boundaries eaten by the tool
+  that wrote the file, so the pattern silently matched nothing.
+- **Confidentiality came back "missing" from an agreement that clearly had it**, because the rule
+  required its supporting cue in the *same clause* — contracts define the term in one clause and impose
+  the duty in the next.
+- **Agreement between passes was almost never reached** (one finding in a 61-clause contract), because
+  the retrieval pass only ever compared its single top vote. It now confirms any label the rule found,
+  over 20 neighbours instead of 5 — agreement went from 52 to 77 predictions and document F1 from 0.537
+  to 0.552.
+- **Two servers can bind the same port on Windows.** A "restarted" server kept serving the old code
+  while the new process sat beside it, which looked exactly like a fix that did not work.
+
+## What it does NOT do
+
+- It is not legal advice, and it does not decide anything. Every finding points at text for a person to read.
+- It does not claim a model's judgement: there is no model in the pipeline. The numbers above are what
+  rules, structure and lexical retrieval achieve.
+- It does not hide its precision. Document precision is 0.463: roughly half of what it reports on a
+  single pass is not what CUAD's experts marked, which is why agreement is shown on every row.
+- It does not read PDFs or Word files yet — plain text in, for now.
+- Its corpus skews to the large commercial agreements that get filed with the SEC, while the buyer signs
+  smaller ones. A held-out slice from public small-business material is still to come.
