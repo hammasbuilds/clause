@@ -85,6 +85,7 @@ class Clause:
             "number": self.number,
             "heading": self.heading,
             "text": self.text,
+            "words": len(self.text.split()),
             "start": self.start,
             "end": self.end,
         }

@@ -283,3 +283,10 @@ def test_corpus_skips_repeated_documents(tmp_path):
     edgar = Edgar(root)
     assert len(edgar.manifest) == 1
     assert edgar.stats["duplicate_manifest_lines_skipped"] == 1
+
+
+def test_clause_dict_carries_its_length():
+    """The UI showed "UNDEFINED WORDS" next to a clause: to_dict had no words field."""
+    clause = segment(CONTRACT)[0].to_dict()
+    assert clause["words"] == len(clause["text"].split())
+    assert clause["words"] > 0

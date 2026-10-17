@@ -70,6 +70,16 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .gap{border-left:3px solid var(--bad);background:var(--bad-soft);padding:9px 11px;border-radius:0 8px 8px 0;margin:8px 0;font-size:13.5px}
 .span{font:12.5px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);display:block;margin-top:4px}
 .hint{color:var(--muted);font-size:12.5px}
+.bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:10px}
+.bar > i{display:block;height:100%;width:30%;background:var(--accent);
+  animation:slide 1.1s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-30%}100%{margin-left:100%}}
+.clause-view{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 9px 9px 0;
+  padding:11px 13px;margin-top:10px;background:var(--bg);font-size:13.5px;white-space:pre-wrap}
+.clause-view h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+tr.pick{cursor:pointer}
+tr.pick:hover{background:var(--accent-soft)}
+tr.pick.on{background:var(--accent-soft)}
 .hidden{display:none}
 .err{color:var(--bad)}
 footer{background:var(--panel);border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;padding:14px 0}
@@ -116,6 +126,10 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
         <button class="btn" id="clear">Clear</button>
       </div>
       <div class="row"><span class="hint" id="src"></span></div>
+      <div id="progress" class="hidden">
+        <div class="bar"><i></i></div>
+        <p class="hint" id="progress-note"></p>
+      </div>
     </div>
   </div>
 
@@ -133,10 +147,15 @@ footer{background:var(--panel);border-top:1px solid var(--line);color:var(--mute
         <div class="row">
           <label style="margin:0"><input type="checkbox" id="only-agreed"> show only findings two or more passes agree on</label>
         </div>
+        <div class="row">
+          <select id="label-filter" style="max-width:260px"><option value="">every clause type</option></select>
+          <input type="text" id="finding-search" placeholder="search the text of a finding" style="max-width:260px">
+        </div>
         <p class="hint" id="agree-note"></p>
         <div class="row"><button class="btn" id="show-all">Show all findings</button>
           <span class="hint" id="shown-count"></span></div>
         <table id="findings"><thead><tr><th>Clause type</th><th>Clause</th><th>Agreement</th><th>Conf.</th></tr></thead><tbody></tbody></table>
+        <div id="clause-view"></div>
       </div>
     </section>
 
@@ -235,11 +254,33 @@ function renderSummary(r){
   });
 }
 
+function fillLabelFilter(){
+  const sel = $("label-filter");
+  const chosen = sel.value;
+  const labels = [...new Set((last.findings||[]).map(f => f.label))].sort();
+  sel.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = ""; all.textContent = "every clause type (" + labels.length + ")";
+  sel.appendChild(all);
+  labels.forEach(l => {
+    const o = document.createElement("option");
+    o.value = l; o.textContent = l;
+    sel.appendChild(o);
+  });
+  sel.value = labels.includes(chosen) ? chosen : "";
+}
+
 function renderFindings(){
   if(!last) return;
   const onlyAgreed = $("only-agreed").checked;
   const body = $("findings").querySelector("tbody"); body.innerHTML = "";
-  let rows = (last.findings||[]).filter(f => !onlyAgreed || f.agreement >= 2);
+  const wantLabel = $("label-filter").value;
+  const wantText = ($("finding-search").value || "").toLowerCase();
+  let rows = (last.findings||[]).filter(f =>
+    (!onlyAgreed || f.agreement >= 2)
+    && (!wantLabel || f.label === wantLabel)
+    && (!wantText || (f.span || "").toLowerCase().includes(wantText)
+        || f.label.toLowerCase().includes(wantText)));
   // Never show an empty table because of a filter: if nothing reaches two passes,
   // fall back to everything and say so.
   let fellBack = false;
@@ -261,13 +302,31 @@ function renderFindings(){
     const td3 = el("td"); const tag = el("span","tag a"+f.agreement, f.passes.join(" + "));
     td3.appendChild(tag);
     const td4 = el("td","num", f.confidence.toFixed(2));
-    tr.append(td1,td2,td3,td4); body.appendChild(tr);
+    tr.append(td1,td2,td3,td4);
+    // A finding shows a snippet; the clause it came from is what a reader checks.
+    tr.className = "pick";
+    tr.onclick = () => {
+      body.querySelectorAll("tr").forEach(x => x.classList.remove("on"));
+      tr.classList.add("on");
+      showClause(f);
+    };
+    body.appendChild(tr);
   });
   // "84 of 84 findings shown" next to 25 rendered rows was simply untrue; the
   // filter count and the visible count are different numbers.
   $("agree-note").textContent = (fellBack ? "No finding here has two passes agreeing, so all are shown. " : "")
     + rows.length + " of " + (last.findings||[]).length
     + " findings match the filter. On held-out expert annotations, findings two passes agree on were right 83% of the time; a single retrieval pass alone, 26%.";
+}
+
+function showClause(f){
+  const host = $("clause-view"); host.innerHTML = "";
+  const clause = (last.clauses||[]).find(c => c.index === f.clause_index);
+  const box = el("div","clause-view");
+  box.appendChild(el("h4","", f.label + " — clause " + (f.number || ("#" + f.clause_index))
+    + (clause ? " · " + clause.words + " words" : "")));
+  box.appendChild(document.createTextNode(clause ? clause.text : f.span));
+  host.appendChild(box);
 }
 
 function renderObligations(){
@@ -300,14 +359,31 @@ function renderStructure(){
 
 $("run").onclick = async () => {
   $("run").disabled = true;
+  // A 400 KB contract takes the better part of a minute. Without this the page
+  // simply sat there with a greyed-out button.
+  const words = ($("text").value.match(/\S+/g) || []).length;
+  const started = Date.now();
+  $("progress").classList.remove("hidden");
+  const tick = setInterval(() => {
+    const secs = ((Date.now() - started) / 1000).toFixed(0);
+    $("progress-note").textContent =
+      "reading " + words.toLocaleString() + " words — " + secs + "s";
+  }, 200);
   try{
     const r = await post("/api/review", {text:$("text").value, contract_type:$("ctype").value, name:$("name").value});
     if(r.error){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",r.error)); return; }
-    last = r; renderSummary(r); renderFindings(); renderObligations(); renderStructure();
+    last = r; renderSummary(r); fillLabelFilter(); renderFindings();
+    renderObligations(); renderStructure();
   } catch(e){ $("kpis").innerHTML=""; $("kpis").appendChild(el("span","err",e.message)); }
-  finally{ $("run").disabled = false; }
+  finally{
+    clearInterval(tick);
+    $("progress").classList.add("hidden");
+    $("run").disabled = false;
+  }
 };
 $("only-agreed").onchange = renderFindings;
+$("label-filter").onchange = renderFindings;
+$("finding-search").oninput = renderFindings;
 $("show-all").onclick = () => { showAll = !showAll; renderFindings(); };
 
 $("load").onclick = async () => {
@@ -325,7 +401,8 @@ $("load").onclick = async () => {
 $("clear").onclick = () => { $("text").value=""; $("src").textContent=""; last=null;
   $("kpis").innerHTML=""; $("kpis").appendChild(el("span","hint","No review yet."));
   $("gaps").innerHTML=""; $("unusual").innerHTML="";
-  $("findings").querySelector("tbody").innerHTML=""; };
+  $("findings").querySelector("tbody").innerHTML="";
+  $("clause-view").innerHTML=""; $("label-filter").innerHTML=""; };
 
 // file input + drag and drop
 $("drop").onclick = () => $("file").click();
