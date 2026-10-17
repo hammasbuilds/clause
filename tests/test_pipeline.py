@@ -229,3 +229,57 @@ def test_junk_is_not_reviewed_as_a_contract(tmp_path):
     junk = "milk eggs bread coffee " * 40
     out = review(junk, Cuad(tmp_path / "missing.json"))
     assert len(out["findings"]) <= 3, [f["label"] for f in out["findings"]]
+
+
+def test_rofr_needs_its_own_words():
+    """ROFR came out as the most common label in the first full build - 11,626 of
+    75,127 - purely from retrieval, because nothing required the clause to mention
+    a right of first refusal."""
+    from clause.pipeline import label_is_plausible
+
+    assert label_is_plausible("Rofr/Rofo/Rofn", "The Investor shall have a right of first refusal.")
+    assert not label_is_plausible("Rofr/Rofo/Rofn", "The Supplier shall deliver the goods on Tuesday.")
+
+
+def test_cue_table_keeps_its_original_entries():
+    """Four original cues were deleted by accident while adding new ones, and the
+    only visible sign was span precision falling from 0.440 to 0.404."""
+    from clause.pipeline import LABEL_CUES
+
+    for label in ("Governing Law", "Warranty Duration", "Termination For Convenience",
+                  "Competitive Restriction Exception", "Insurance", "Audit Rights",
+                  "Indemnification", "Confidentiality"):
+        assert label in LABEL_CUES, f"{label} lost its cue"
+
+
+def test_filing_boilerplate_is_not_a_clause():
+    """EDGAR's redaction legend contains the word confidential and was being
+    labelled a Confidentiality clause in nearly every contract in the corpus."""
+    from clause.pipeline import is_filing_boilerplate
+
+    assert is_filing_boilerplate(
+        "CERTAIN PORTIONS OF THIS EXHIBIT (INDICATED BY [***]) HAVE BEEN EXCLUDED BECAUSE THEY ARE "
+        "BOTH NOT MATERIAL AND THE TYPE THAT THE COMPANY TREATS AS PRIVATE AND CONFIDENTIAL."
+    )
+    assert not is_filing_boilerplate(
+        "Each Party shall not disclose the Confidential Information of the other Party."
+    )
+
+
+def test_corpus_skips_repeated_documents(tmp_path):
+    """Two fetchers running at once appended the same contract twice, and every
+    clause of it was then built twice: 67,675 duplicate row ids in 139,200 rows."""
+    import json
+
+    from clause.corpus import Edgar
+
+    root = tmp_path / "edgar"
+    root.mkdir()
+    entry = {"doc_id": "a:b.htm", "query": "lease agreement", "cik": "1", "url": "u",
+             "words": 10, "file": "a.txt"}
+    (root / "manifest.jsonl").write_text(
+        json.dumps(entry) + "\n" + json.dumps(entry) + "\n", encoding="utf-8"
+    )
+    edgar = Edgar(root)
+    assert len(edgar.manifest) == 1
+    assert edgar.stats["duplicate_manifest_lines_skipped"] == 1

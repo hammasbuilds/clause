@@ -18,7 +18,7 @@ uv run python -m clause.evaluate     # score the pipeline against expert annotat
 | Resource | Size | Note |
 |---|---|---|
 | CUAD | 510 contracts, 13,823 expert answer spans, 41 clause types | the expert benchmark, CC BY 4.0 — and as few as 3 examples of some contract types |
-| **clause corpus (this repo)** | **2,266 contracts, 13.96M words, 20 contract types** | SEC EDGAR EX-10 exhibits, fetched one query per contract type so the corpus is sampled for type balance |
+| **clause-120k (ours)** | **1,163 contracts, 7.15M words, 20 contract types** | built from SEC EDGAR EX-10 exhibits, one query per contract type so the corpus is sampled for type balance |
 
 CUAD's contracts came from EDGAR, which is public and effectively unbounded — the corpus was never the
 bottleneck, the annotation was. So this fetches contracts at scale and labels them without a model.
@@ -35,7 +35,7 @@ It is built on two public corpora, named here because CUAD's licence asks for at
 
 | Built on | What it provides | Licence |
 |---|---|---|
-| **SEC EDGAR** material-contract exhibits (EX-10) | 2,266 commercial contracts, 13.96M words, 20 contract types — we fetched one query per type so the corpus is balanced by type | public (US government filings) |
+| **SEC EDGAR** material-contract exhibits (EX-10) | 1,163 commercial contracts, 7.15M words, 20 contract types — we fetched one query per type so the corpus is balanced by type | public (US government filings) |
 | **CUAD** (The Atticus Project) | 510 contracts with 13,823 expert-annotated clause spans across 41 clause types | CC BY 4.0 |
 
 Every row names its contract, its CIK and the EDGAR URL it came from.
@@ -90,17 +90,21 @@ contract, so it cannot look up the answer.
 
 | | |
 |---|---|
-| Found a clause type the contract really has (document recall) | **0.628** |
-| A reported clause type was really there (document precision) | **0.529** |
-| Document F1 | **0.575** |
-| Pointed at text overlapping the expert span (span precision) | **0.440** |
+| Found a clause type the contract really has (document recall) | **0.585** |
+| A reported clause type was really there (document precision) | **0.579** |
+| Document F1 | **0.582** |
+| Pointed at text overlapping the expert span (span precision) | **0.456** |
 
 Those are the numbers after a **plausibility gate**: a finding from retrieval alone must show a word
 the label is named for (an Insurance finding needs "insur" somewhere in the clause). Without it the
 pipeline reported an insurance clause in a contract that never mentions insurance. The gate trades
 recall for precision and wins on both the headline and the one that matters most:
-precision 0.458 → 0.529, span precision 0.270 → **0.440**, F1 0.551 → 0.575, with the number of
-predictions cut from 1,205 to 509.
+precision 0.458 → 0.579, span precision 0.270 → **0.456**, F1 0.551 → 0.582, with the number of
+predictions cut from 1,205 to 472.
+
+Only labels whose cue is *diagnostic* belong in that table. Cues for Parties and Document Name were
+tried and removed: a clause can name the parties without using the word "between", and requiring it
+cost recall (0.585 → 0.538) for no gain worth having.
 
 **The finding that shaped the product:** agreement between passes predicts correctness far better than
 any single pass.

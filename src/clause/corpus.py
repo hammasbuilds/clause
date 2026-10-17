@@ -140,11 +140,21 @@ class Edgar:
     def __init__(self, root: Path | None = None):
         self.root = Path(root or DEFAULT_ROOT / "edgar")
         self.manifest: list[dict] = []
+        self.duplicate_manifest_lines = 0
         man = self.root / "manifest.jsonl"
         if man.exists():
+            seen: set[str] = set()
             for line in man.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    self.manifest.append(json.loads(line))
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                # One entry per document. A repeated doc_id means the same contract
+                # would be read, labelled and written twice.
+                if row["doc_id"] in seen:
+                    self.duplicate_manifest_lines += 1
+                    continue
+                seen.add(row["doc_id"])
+                self.manifest.append(row)
 
     def text(self, entry: dict) -> str:
         path = self.root / entry["file"]
@@ -157,6 +167,7 @@ class Edgar:
         return {
             "root": str(self.root),
             "contracts": len(self.manifest),
+            "duplicate_manifest_lines_skipped": self.duplicate_manifest_lines,
             "contract_types": len(by_query),
             "by_type": dict(by_query.most_common()),
             "median_words": sorted(words)[len(words) // 2] if words else 0,

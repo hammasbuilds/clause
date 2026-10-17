@@ -49,8 +49,14 @@ QUERIES = [
     "franchise agreement",
     "settlement agreement",
 ]
-WINDOWS = [("2023-01-01", "2023-06-30"), ("2023-07-01", "2023-12-31"),
-           ("2024-01-01", "2024-06-30"), ("2024-07-01", "2024-12-31")]
+# Half-year windows across six years. The same contract is often returned by
+# several queries and several windows, so unique documents grow far more slowly
+# than hits: 20 queries x 4 windows returned 1,163 distinct contracts.
+WINDOWS = [
+    (f"{year}-01-01", f"{year}-06-30") for year in range(2019, 2025)
+] + [
+    (f"{year}-07-01", f"{year}-12-31") for year in range(2019, 2025)
+]
 
 TAG_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE)
 ANY_TAG_RE = re.compile(r"<[^>]+>")
@@ -100,6 +106,21 @@ def main() -> int:
                 done.add(json.loads(line)["doc_id"])
     print(f"already fetched: {len(done)}")
 
+    def already_listed(doc_id: str) -> bool:
+        """Re-read the manifest before writing a new entry.
+
+        `done` is only this process's view. Two fetchers running at once each have
+        their own, and both append to the same file - which is how 2,266 manifest
+        lines came to describe 1,163 contracts, and how every clause in the first
+        build of clause-120k ended up written twice.
+        """
+        if not manifest_path.exists():
+            return False
+        for existing in manifest_path.read_text(encoding="utf-8").splitlines():
+            if existing.strip() and json.loads(existing)["doc_id"] == doc_id:
+                return True
+        return False
+
     saved = 0
     with manifest_path.open("a", encoding="utf-8", newline="\n") as man:
         for query in QUERIES:
@@ -113,7 +134,7 @@ def main() -> int:
                 print(f"  {query} {start}: {len(hits)} hits")
                 for h in hits[: args.per_query]:
                     doc_id = h["_id"]
-                    if doc_id in done:
+                    if doc_id in done or already_listed(doc_id):
                         continue
                     accession, _, filename = doc_id.partition(":")
                     if not re.search(r"ex-?10", filename, re.IGNORECASE):

@@ -265,7 +265,6 @@ def rerank_slot(candidates: list[tuple[int, float]]) -> list[tuple[int, float]]:
 LABEL_CUES = {
     "Insurance": ("insur",),
     "Audit Rights": ("audit", "inspect"),
-    "Governing Law": ("govern", "laws of", "law of"),
     "Cap On Liability": ("liabilit", "damages"),
     "Uncapped Liability": ("liabilit",),
     "Indemnification": ("indemnif", "hold harmless"),
@@ -276,11 +275,9 @@ LABEL_CUES = {
     "Change Of Control": ("change of control", "change in control"),
     "Most Favored Nation": ("most favo",),
     "Minimum Commitment": ("minimum",),
-    "Warranty Duration": ("warrant",),
     "Force Majeure": ("force majeure", "act of god", "acts of god"),
     "Dispute Resolution": ("arbitrat", "mediat", "jurisdiction", "venue", "dispute"),
     "Renewal Term": ("renew",),
-    "Termination For Convenience": ("terminat",),
     "Post-Termination Services": ("terminat",),
     "Price Restrictions": ("price", "pricing"),
     "Revenue/Profit Sharing": ("revenue", "profit", "royalt"),
@@ -292,6 +289,29 @@ LABEL_CUES = {
     "Notice Period To Terminate Renewal": ("notice", "renew"),
     "Expiration Date": ("expir", "terminates on"),
     "Agreement Date": ("dated", "entered into"),
+    # Added after the first full build, where Rofr/Rofo/Rofn came out as the most
+    # common label in the corpus (11,626 of 75,127) purely from retrieval, with no
+    # cue to stop it. A right of first refusal says so in the text.
+    #
+    # Only labels whose cue is *diagnostic* belong here. Cues for Parties and
+    # Document Name were tried and removed: a clause can name the parties without
+    # the word "between", so requiring it cost recall (0.628 -> 0.538) and the
+    # measurement did not justify it.
+    "Governing Law": ("govern", "laws of", "law of"),
+    "Warranty Duration": ("warrant",),
+    "Termination For Convenience": ("terminat",),
+    "Competitive Restriction Exception": ("compet",),
+    "Rofr/Rofo/Rofn": ("first refusal", "first offer", "first negotiation", "preemptive right",
+                       "pre-emptive right", "right of first"),
+    "Effective Date": ("effective date", "effective as of"),
+    "Non-Disparagement": ("disparag",),
+    "Third Party Beneficiary": ("third party beneficiar", "third-party beneficiar"),
+    "Volume Restriction": ("volume", "quantity", "units"),
+    "Irrevocable Or Perpetual License": ("perpetual", "irrevocable"),
+    "Unlimited/All-You-Can-Eat-License": ("unlimited", "all-you-can-eat"),
+    "Liquidated Damages": ("liquidated damages",),
+    "Covenant Not To Sue": ("not to sue", "covenant not"),
+    "Source Code Escrow": ("escrow", "source code"),
 }
 
 
